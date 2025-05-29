@@ -1,21 +1,28 @@
+
 import streamlit as st
 import openai
 
-st.set_page_config(page_title="Chat do Tadeu", page_icon="🤖")
+st.set_page_config(page_title="Chat de OCR com Tadeu", page_icon="🤖📄")
 st.title("Chat de OCR com Tadeu 🤖📄")
 
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 if "messages" not in st.session_state:
-    st.session_state["messages"] = [{"role": "system", "content": "Você é o Tadeu, um GPT especialista em planilhamento de registros de matrícula de imóveis. Siga sempre a padronização determinada por Guilherme Martins, sem nunca inventar."}]
+    st.session_state["messages"] = [
+        {"role": "system", "content": "Você é o Tadeu, um GPT especialista em planilhamento de registros de matrícula de imóveis. Siga sempre a padronização determinada por Guilherme Martins, sem nunca inventar."}
+    ]
 
-for msg in st.session_state["messages"]:
-    st.chat_message(msg["role"]).write(msg["content"])
+# Upload de arquivos
+uploaded_file = st.file_uploader("📤 Envie um arquivo OCR (PDF, imagem ou texto)...", type=["pdf", "txt", "jpg", "png", "jpeg"])
+if uploaded_file is not None:
+    file_content = uploaded_file.read().decode("utf-8", errors="ignore")
+    st.text_area("Conteúdo do arquivo:", file_content, height=200)
 
-if prompt := st.chat_input("Digite aqui sua pergunta ou envie o texto OCR..."):
+prompt = st.chat_input("Digite aqui sua pergunta ou envie o texto OCR...")
+
+if prompt:
     st.session_state["messages"].append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    st.chat_message("user").markdown(prompt)
 
     response = openai.ChatCompletion.create(
         model="gpt-4-turbo",
@@ -24,5 +31,12 @@ if prompt := st.chat_input("Digite aqui sua pergunta ou envie o texto OCR..."):
 
     reply = response.choices[0].message.content
     st.session_state["messages"].append({"role": "assistant", "content": reply})
-    with st.chat_message("assistant"):
-        st.markdown(reply)
+    st.chat_message("assistant").markdown(reply)
+
+    # Salvar como arquivo de resposta
+    with open("/mnt/data/resultado_tadeu.txt", "w", encoding="utf-8") as f:
+        f.write(reply)
+
+    st.success("✅ Resposta salva!")
+    with open("/mnt/data/resultado_tadeu.txt", "rb") as f:
+        st.download_button("📥 Baixar resposta do Tadeu", f, file_name="resultado_tadeu.txt")
